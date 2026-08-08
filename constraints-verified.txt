@@ -1,0 +1,13 @@
+# Direct dependency versions verified together on Windows x64,
+# Python 3.11–3.13, on 2026-07-28.
+# Keep requirements*.txt as the supported ranges and use this file to make
+# normal installs reproducible without freezing platform-specific transitive
+# packages such as the CUDA build of torch. Release installs use
+# requirements.lock; NVIDIA torch uses requirements-torch-cu128.txt.
+faster-whisper==1.2.1
+gradio==6.15.2
+imageio-ffmpeg==0.6.0
+ctranslate2==4.8.0
+pyannote.audio==4.0.5
+torch==2.11.0
+torchaudio==2.11.0

@@ -1,0 +1,11 @@
+.venv/
+models/
+.cache/
+transcriptions/
+.whisper/
+logs/
+*.log
+.env
+.env.*
+__pycache__/
+*.pyc
