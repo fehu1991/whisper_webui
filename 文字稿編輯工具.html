@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>結構化逐字稿 TXT 編輯器</title>
+<style>
+    :root {
+      --bg: #f4f6fa;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #64748b;
+      --line: #dbe2ea;
+      --line-strong: #b7c4d4;
+      --primary: #2457d6;
+      --primary-hover: #1d48b6;
+      --primary-soft: #e9efff;
+      --danger: #b42318;
+      --danger-soft: #feeceb;
+      --warning: #9a6700;
+      --warning-soft: #fff4ce;
+      --ok: #067647;
+      --ok-soft: #e8f7ef;
+      --shadow: 0 8px 24px rgba(23, 32, 51, 0.07);
+      --radius: 12px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: border-color .15s ease, background .15s ease, transform .15s ease;
+      white-space: nowrap;
+    }
+
+    button:hover:not(:disabled) {
+      border-color: #aab8ca;
+      background: #fbfcfe;
+    }
+
+    button:active:not(:disabled) { transform: translateY(1px); }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    button.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    button.primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+
+    button.danger {
+      color: var(--danger);
+      background: var(--danger-soft);
+      border-color: #f4b8b3;
+    }
+
+    input, select, textarea {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      padding: 8px 10px;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(36, 87, 214, .12);
+    }
+
+    input[type="number"] { width: 88px; }
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+    }
+
+    code { font-family: var(--mono); }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #10192b;
+      color: #fff;
+      padding: 15px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    header h1 {
+      font-size: 20px;
+      margin: 0 0 4px;
+      letter-spacing: .02em;
+    }
+
+    header p {
+      margin: 0;
+      color: #bdc7d8;
+      font-size: 13px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .header-actions label {
+      color: #dbe5f4;
+      font-size: 12px;
+    }
+
+    .header-actions select {
+      background: #17233a;
+      color: #fff;
+      border-color: #3a4965;
+      padding: 7px 9px;
+    }
+
+    .header-actions button:not(.primary) {
+      background: #17233a;
+      color: #fff;
+      border-color: #3a4965;
+    }
+
+    main {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    details.panel > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 13px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 650;
+      user-select: none;
+    }
+
+    details.panel > summary::-webkit-details-marker { display: none; }
+
+    details.panel > summary::after {
+      content: "展開";
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    details.panel[open] > summary::after { content: "收合"; }
+
+    details.panel[open] > summary { border-bottom: 1px solid var(--line); }
+
+    .summary-note {
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 12px;
+      margin-left: 8px;
+    }
+
+    .import-panel {
+      padding: 14px;
+      display: grid;
+      grid-template-columns: minmax(260px, .9fr) minmax(340px, 1.4fr);
+      gap: 14px;
+    }
+
+    .dropzone {
+      min-height: 142px;
+      border: 2px dashed var(--line-strong);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 18px;
+      background: #fbfcfe;
+      cursor: pointer;
+    }
+
+    .dropzone.dragover {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .dropzone strong {
+      font-size: 15px;
+      margin-bottom: 7px;
+    }
+
+    .dropzone span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    #fileInput { display: none; }
+
+    .paste-box {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .paste-box textarea {
+      resize: vertical;
+      min-height: 82px;
+      font-family: var(--mono);
+      line-height: 1.5;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .field-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .field-inline label,
+    .toolbar label,
+    .tool-card label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .filename-input { min-width: 220px; flex: 1; }
+
+    .command-panel { overflow: hidden; }
+
+    .searchbar {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(230px, 1fr) auto auto auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .searchbar input[type="search"] { width: 100%; }
+
+    .match-note {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    .selectionbar {
+      padding: 0 12px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .drawer-row {
+      border-top: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .tool-drawer + .tool-drawer { border-left: 1px solid var(--line); }
+
+    .tool-drawer > summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 11px 13px;
+      font-weight: 600;
+      color: #33415a;
+      background: #fafbfd;
+    }
+
+    .tool-drawer > summary::-webkit-details-marker { display: none; }
+    .tool-drawer > summary::before { content: "＋"; margin-right: 7px; color: var(--primary); }
+    .tool-drawer[open] > summary::before { content: "－"; }
+    .tool-drawer[open] > summary { border-bottom: 1px solid var(--line); }
+
+    .drawer-content { padding: 12px; }
+
+    .replace-row {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(260px, 1fr));
+      gap: 10px;
+    }
+
+    .tool-card {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 10px;
+      background: #fbfcfe;
+    }
+
+    .tool-card h3 {
+      margin: 0 0 9px;
+      font-size: 13px;
+    }
+
+    .tool-card .row + .row { margin-top: 8px; }
+
+    .statusbar {
+      padding: 9px 12px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      background: #fcfdff;
+    }
+
+    .badges {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #eef2f7;
+      color: #43516a;
+    }
+
+    .badge.ok { background: var(--ok-soft); color: var(--ok); }
+    .badge.warn { background: var(--warning-soft); color: var(--warning); }
+
+    .temp-words-content { padding: 12px; }
+
+    .temp-words-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      gap: 9px;
+    }
+
+    .temp-word-item {
+      display: flex;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .temp-word-item input { min-width: 0; width: 100%; }
+    .temp-word-item button { padding-inline: 10px; }
+
+    .temp-words-foot {
+      margin-top: 9px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .editor-panel {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 400px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: calc(100vh - 285px);
+      min-height: 340px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 1230px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 7px;
+      vertical-align: middle;
+      background: #fff;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: #f7f9fc;
+      color: #45546d;
+      font-weight: 650;
+      text-align: left;
+      font-size: 12px;
+      letter-spacing: .02em;
+    }
+
+    tbody tr:hover td { background: #fbfcff; }
+    tbody tr.unparsed td { background: #fffaf0; }
+    tbody tr.selected td { background: #f0f5ff; }
+    td.center, th.center { text-align: center; }
+
+    .cell-input {
+      width: 100%;
+      min-width: 0;
+      border-color: transparent;
+      background: transparent;
+      padding: 7px 8px;
+    }
+
+    .cell-input:hover { border-color: var(--line); background: #fff; }
+    .cell-input.number { width: 78px; font-family: var(--mono); }
+    .cell-input.speaker { min-width: 130px; font-family: var(--mono); }
+    .cell-input.time { min-width: 150px; font-family: var(--mono); }
+    .cell-input.text { min-width: 330px; }
+    .raw-input { width: 100%; font-family: var(--mono); min-width: 600px; }
+
+    .row-action-select {
+      width: 118px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+
+    [hidden] { display: none !important; }
+
+    .empty {
+      min-height: 340px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      text-align: center;
+      padding: 30px;
+    }
+
+    dialog {
+      border: 0;
+      border-radius: 12px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.25);
+      width: min(920px, calc(100vw - 28px));
+      padding: 0;
+    }
+
+    dialog::backdrop { background: rgba(14, 22, 38, .55); }
+
+    .dialog-head, .dialog-foot {
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .dialog-head { border-bottom: 1px solid var(--line); }
+    .dialog-head h2 { margin: 0; font-size: 17px; }
+    .dialog-body { padding: 14px 16px; }
+
+    .dialog-body textarea {
+      width: 100%;
+      min-height: 55vh;
+      resize: vertical;
+      font-family: var(--mono);
+      line-height: 1.55;
+    }
+
+    .dialog-foot { border-top: 1px solid var(--line); }
+
+    .help {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 13px;
+    }
+
+    .help code {
+      background: #f1f4f8;
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: #24324a;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #172033;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 9px;
+      box-shadow: 0 12px 34px rgba(0,0,0,.24);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(8px);
+      transition: .2s ease;
+      z-index: 100;
+      max-width: min(460px, calc(100vw - 36px));
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .small-note { color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+    @media (max-width: 1000px) {
+      .searchbar { grid-template-columns: 1fr 1fr; }
+      .match-note { text-align: left; }
+      .drawer-row { grid-template-columns: 1fr; }
+      .tool-drawer + .tool-drawer { border-left: 0; border-top: 1px solid var(--line); }
+      .temp-words-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      header { align-items: flex-start; flex-direction: column; }
+      .header-actions { justify-content: flex-start; }
+      .import-panel { grid-template-columns: 1fr; }
+      .tool-grid { grid-template-columns: 1fr; }
+      .searchbar { grid-template-columns: 1fr; }
+      .temp-words-grid { grid-template-columns: 1fr; }
+      .table-wrap { max-height: none; }
+      .summary-note { display: none; }
+    }
+  
+
+    /* Screenshot-matched desktop layout */
+    :root {
+      --bg: #eef2f7;
+      --panel: #ffffff;
+      --text: #162238;
+      --muted: #5f718d;
+      --line: #d6dfeb;
+      --line-strong: #aebfd4;
+      --primary: #2457d6;
+      --shadow: none;
+      --radius: 12px;
+    }
+
+    body { font-size: 13px; background: var(--bg); }
+    .legacy-header { display: none; }
+
+    main {
+      padding: 4px;
+      gap: 10px;
+      min-width: 980px;
+    }
+
+    .panel {
+      border-radius: 12px;
+      box-shadow: none;
+      border-color: #d4dde9;
+    }
+
+    details.panel > summary {
+      min-height: 42px;
+      padding: 10px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    details.panel > summary::after { content: "收合"; }
+    details.panel:not([open]) > summary::after { content: "展開"; }
+
+    .import-panel {
+      padding: 14px;
+      grid-template-columns: minmax(390px, .8fr) minmax(610px, 1.25fr);
+      gap: 12px;
+      min-height: 232px;
+    }
+
+    .dropzone {
+      min-height: 205px;
+      border-radius: 8px;
+      background: #fbfcfe;
+    }
+
+    .dropzone strong { font-size: 14px; margin-bottom: 8px; }
+    .dropzone span { font-size: 12px; }
+
+    .paste-box { gap: 8px; min-width: 0; }
+    .paste-box > .row:first-child { min-height: 36px; }
+    .paste-box textarea { min-height: 76px; height: 76px; }
+    .filename-input { min-width: 0; }
+
+    button, input, select, textarea {
+      border-radius: 7px;
+    }
+
+    button { padding: 7px 11px; }
+    input, select, textarea { padding: 7px 9px; }
+
+    .output-actions {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-top: 1px;
+      padding-top: 7px;
+      border-top: 1px solid #e6ebf2;
+    }
+
+    .output-actions label { color: var(--muted); font-size: 12px; }
+    .output-actions button, .output-actions select {
+      background: #fff;
+      color: var(--text);
+      border-color: var(--line);
+    }
+    .output-actions button.primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .command-panel { overflow: hidden; }
+    .command-upper {
+      display: grid;
+      grid-template-columns: minmax(590px, 1.18fr) minmax(430px, 1fr);
+      min-height: 286px;
+      align-items: stretch;
+    }
+    .command-left {
+      min-width: 0;
+      border-right: 1px solid var(--line);
+      overflow: hidden;
+    }
+
+    .searchbar {
+      padding: 10px 10px 0;
+      grid-template-columns: minmax(280px, 1fr);
+      gap: 6px;
+    }
+    .searchbar input[type="search"] { height: 35px; }
+    .searchbar select { width: auto; }
+    .searchbar > select { display: inline-block; }
+    .searchbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .searchbar input[type="search"] { flex: 1 0 100%; }
+
+    .selectionbar { padding: 6px 10px 10px; gap: 7px; }
+    .match-note { text-align: left; }
+
+    .drawer-row {
+      grid-template-columns: 1fr;
+      border-top: 1px solid var(--line);
+    }
+    .tool-drawer + .tool-drawer {
+      border-left: 0;
+      border-top: 1px solid var(--line);
+    }
+    .tool-drawer > summary {
+      min-height: 42px;
+      padding: 11px 13px;
+    }
+    .drawer-content { padding: 10px; }
+    .tool-grid { grid-template-columns: 1fr; }
+
+    .temp-panel {
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      min-width: 0;
+      min-height: 286px;
+      max-height: none;
+      overflow: visible;
+    }
+    .temp-panel > summary {
+      padding: 11px 14px !important;
+      min-height: 43px !important;
+      justify-content: flex-start !important;
+      font-weight: 650 !important;
+    }
+    .temp-panel > summary::after { display: none; }
+    .temp-panel .summary-note { margin-left: 8px; }
+    .temp-words-content { padding: 10px; }
+    .temp-words-grid {
+      grid-template-columns: minmax(220px, 340px);
+      gap: 9px;
+    }
+    .temp-word-item input { height: 35px; }
+    .temp-words-foot { display: none; }
+
+    .statusbar {
+      min-height: 42px;
+      padding: 8px 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .editor-panel { min-height: 395px; }
+    .table-wrap { min-height: 395px; max-height: calc(100vh - 585px); }
+    .empty { min-height: 395px; }
+
+    @media (max-width: 1180px) {
+      main { min-width: 0; }
+      .import-panel { grid-template-columns: 1fr; }
+      .command-upper { grid-template-columns: 1fr; }
+      .command-left { border-right: 0; border-bottom: 1px solid var(--line); }
+      .temp-panel { min-height: 0; max-height: none; }
+      .temp-words-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+      .temp-words-foot { display: flex; }
+    }
+
+
+    /* 搜尋、取代與批次工具的緊湊版配置 */
+    .command-upper { min-height: 0; }
+    .command-left { display: flex; flex-direction: column; }
+
+    .replace-inline {
+      margin: 7px 10px 10px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      display: grid;
+      grid-template-columns: auto minmax(260px, 1fr);
+      gap: 7px 10px;
+      align-items: center;
+    }
+    .replace-inline-label {
+      color: #33415a;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .replace-inline .replace-row {
+      grid-template-columns: minmax(220px, 1fr) auto;
+      width: 100%;
+    }
+    .replace-inline .replace-note {
+      grid-column: 2;
+      margin: 0;
+    }
+
+    .drawer-row { border-top: 1px solid var(--line); }
+    .tool-drawer > summary { min-height: 38px; padding: 9px 12px; }
+    .tool-drawer .drawer-content { padding: 9px; }
+    .tool-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      align-items: stretch;
+    }
+    .tool-card {
+      padding: 9px;
+      min-width: 0;
+    }
+    .tool-card h3 { margin-bottom: 7px; }
+    .tool-card .row {
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .tool-card input[type="number"] { width: 74px; }
+    .tool-card input[type="text"],
+    .tool-card select { min-width: 0; max-width: 100%; }
+    .batch-note {
+      margin: 8px 2px 0;
+      padding-top: 7px;
+      border-top: 1px dashed var(--line);
+    }
+
+    @media (max-width: 1450px) {
+      .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 1180px) {
+      .replace-inline { grid-template-columns: 1fr; }
+      .replace-inline .replace-note { grid-column: 1; }
+      .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      .replace-inline .replace-row { grid-template-columns: 1fr; }
+      .tool-grid { grid-template-columns: 1fr; }
+    }
+</style>
+</head>
+<body>
+<div class="app">
+<header class="legacy-header">
+<div>
+<h1>結構化逐字稿 TXT 編輯器</h1>
+<p>單機離線處理；第一份檔案為主，之後載入的檔案接續附加。</p>
+</div>
+</header>
+<main>
+<details class="panel" open="">
+<summary class="import-summary">
+<span>匯入與輸出<span class="summary-note">可一次選取多個 TXT；第一份載入為主檔，其餘依選取順序附加</span></span>
+</summary>
+<div class="import-panel">
+<label class="dropzone" for="fileInput" id="dropzone">
+<strong>拖放或選擇 TXT 檔案</strong>
+<span id="fileLabel">可重複載入；後續檔案不會取代第一份內容</span>
+<input accept=".txt,text/plain" id="fileInput" multiple="" type="file"/>
+</label>
+<div class="paste-box">
+<div class="row">
+<span class="field-inline">
+<label for="encoding">讀取編碼</label>
+<select id="encoding">
+<option value="auto">自動判斷</option>
+<option value="utf-8">UTF-8</option>
+<option value="big5">Big5</option>
+</select>
+</span>
+<span class="field-inline">
+<label for="lineEnding">輸出換行</label>
+<select id="lineEnding">
+<option value="crlf">Windows（CRLF）</option>
+<option value="lf">Unix（LF）</option>
+</select>
+</span>
+</div>
+<div class="row">
+<label for="fileNameInput">下載檔名</label>
+<input class="filename-input" id="fileNameInput" type="text" value="output.txt"/>
+</div>
+<textarea id="pasteInput" placeholder="也可直接貼上文字，例如：
+1. [SPEAKER_02] [00:00:00.000 - 00:00:00.500] 碰到啊"></textarea>
+<div class="row">
+<button id="parsePasteBtn">以貼上內容重新開始</button>
+<button id="appendPasteBtn">附加貼上內容</button>
+<span class="small-note">「重新開始」會取代目前表格；「附加」接在末尾。</span>
+</div>
+<div class="output-actions">
+<label for="outputScope">輸出範圍</label>
+<select id="outputScope">
+<option value="all">全部資料</option>
+<option value="selected">已選行</option>
+<option value="visible">目前篩選結果</option>
+</select>
+<button id="helpBtn">格式說明</button>
+<button id="previewBtn">預覽</button>
+<button id="copyBtn">複製</button>
+<button class="primary" id="downloadBtn">下載 TXT</button>
+</div></div>
+</div>
+</details>
+<section class="panel command-panel"><div class="command-upper"><div class="command-left"><div class="searchbar">
+<input id="searchInput" placeholder="搜尋編號、說話者、時間或文字" type="search"/>
+<select aria-label="搜尋欄位" id="searchField">
+<option value="all">搜尋全部欄位</option>
+<option value="text">只搜尋文字</option>
+<option value="speaker">只搜尋說話者</option>
+</select>
+<select aria-label="資料篩選" id="filterMode">
+<option value="all">顯示全部</option>
+<option value="parsed">只顯示已解析</option>
+<option value="unparsed">只顯示未解析</option>
+<option value="selected">只顯示已選行</option>
+<option value="emptyText">只顯示空白文字</option>
+</select>
+<select aria-label="說話者篩選" id="speakerFilter">
+<option value="">所有說話者</option>
+</select>
+</div><div class="replace-inline"><div class="replace-inline-label">取代搜尋結果</div><div class="replace-row">
+<input id="replaceInput" placeholder="取代為……" type="text"/>
+<button id="replaceAllBtn">取代目前搜尋結果</button>
+</div><p class="small-note replace-note">依上方搜尋文字與欄位執行；「全部欄位」只修改說話者、文字及未解析原始行，不修改編號與時間。</p></div><div class="selectionbar">
+<button id="clearSearchBtn">清除篩選</button>
+<button id="selectAllBtn">選取目前結果</button>
+<button id="selectNoneBtn">取消全部選取</button>
+<button class="danger" id="deleteSelectedBtn">刪除已選</button>
+<span class="match-note" id="matchNote">目前顯示 0 行</span>
+</div><div class="drawer-row">
+
+<details class="tool-drawer" open="">
+<summary>批次工具</summary>
+<div class="drawer-content">
+<div class="tool-grid">
+<section class="tool-card">
+<h3>插入與重新編號</h3>
+<div class="row">
+<label for="insertRowNumber">插入編號</label>
+<input id="insertRowNumber" min="0" step="1" type="number" value="1"/>
+<button id="addRowBtn">插入新行</button>
+</div>
+<div class="row">
+<label for="renumberStart">起始</label>
+<input id="renumberStart" min="0" step="1" type="number" value="1"/>
+<label for="renumberStep">間隔</label>
+<input id="renumberStep" min="1" step="1" type="number" value="1"/>
+<button id="renumberBtn">重新編號</button>
+</div>
+</section>
+<section class="tool-card">
+<h3>說話者與時間位移</h3>
+<div class="row">
+<input id="batchSpeaker" list="speakerList" placeholder="說話者名稱" type="text"/>
+<datalist id="speakerList"></datalist>
+<button id="setSpeakerBtn">套用至已選</button>
+</div>
+<div class="row">
+<label for="shiftMs">毫秒</label>
+<input id="shiftMs" step="100" type="number" value="0"/>
+<button id="shiftTimeBtn">位移已選時間</button>
+</div>
+</section>
+<section class="tool-card">
+<h3>批次文字處理</h3>
+<div class="row">
+<select id="batchTextAction">
+<option value="prefix">加到文字前方</option>
+<option value="suffix">加到文字後方</option>
+<option value="remove">移除指定文字</option>
+<option value="trim">移除前後空白</option>
+<option value="collapse">合併連續空白</option>
+</select>
+<input id="batchTextValue" placeholder="處理文字" type="text"/>
+</div>
+<div class="row">
+<select id="batchTextScope">
+<option value="selected">已選行</option>
+<option value="visible">目前篩選結果</option>
+</select>
+<button id="applyBatchTextBtn">套用</button>
+</div>
+</section>
+
+</div><p class="small-note batch-note">每列右側的操作選單可前插、後插、複製、上移、下移或刪除。前插、後插與複製會自動遞延後續數字編號；上移、下移只調整實際順序。</p>
+</div>
+</details>
+</div></div><details class="temp-panel" open="">
+<summary>
+<span>暫存詞彙<span class="summary-note">僅保留於本次頁面，重新開啟會恢復預設值</span></span>
+</summary>
+<div class="temp-words-content">
+<div class="temp-words-grid" id="tempWordsGrid"></div>
+<div class="temp-words-foot">
+<span class="small-note">點「複製」後自行貼到需要的位置。</span>
+<button id="resetTempWordsBtn">恢復預設詞彙</button>
+</div>
+</div>
+</details></div>
+<div class="statusbar">
+<div class="badges">
+<span class="badge" id="totalBadge">共 0 行</span>
+<span class="badge ok" id="parsedBadge">已解析 0 行</span>
+<span class="badge warn" id="unparsedBadge">未解析 0 行</span>
+<span class="badge" id="selectedBadge">已選 0 行</span>
+<span class="badge" id="fileBadge">已載入 0 個檔案</span>
+</div>
+<div>格式：<code>編號. [說話者] [開始時間 - 結束時間] 文字</code></div>
+</div>
+</section>
+<section class="panel editor-panel">
+<div class="table-wrap" id="tableWrap">
+<div class="empty" id="emptyState">尚未載入資料。請選擇 TXT 檔或貼上內容。</div>
+<table hidden="" id="editorTable">
+<thead>
+<tr>
+<th class="center" style="width:44px;"><input id="masterCheck" title="選取目前顯示的行" type="checkbox"/></th>
+<th style="width:96px;">句型編號</th>
+<th style="width:160px;">說話者</th>
+<th style="width:174px;">開始時間</th>
+<th style="width:174px;">結束時間</th>
+<th>文字內容／原始行</th>
+<th class="center" style="width:138px;">操作</th>
+</tr>
+</thead>
+<tbody id="editorBody"></tbody>
+</table>
+</div>
+</section>
+</main>
+</div>
+<dialog id="previewDialog">
+<div class="dialog-head">
+<h2>TXT 輸出預覽</h2>
+<button id="closePreviewBtn">關閉</button>
+</div>
+<div class="dialog-body">
+<textarea id="previewText" spellcheck="false"></textarea>
+<p class="help">預覽內容可直接修改。「套用預覽內容」只適用於輸出範圍為全部資料時；部分範圍預覽不會覆寫表格。</p>
+</div>
+<div class="dialog-foot">
+<span class="small-note" id="previewStats"></span>
+<div class="row">
+<button id="applyPreviewBtn">套用預覽內容</button>
+<button class="primary" id="downloadPreviewBtn">下載此預覽</button>
+</div>
+</div>
+</dialog>
+<dialog id="helpDialog">
+<div class="dialog-head">
+<h2>格式與匯入說明</h2>
+<button id="closeHelpBtn">關閉</button>
+</div>
+<div class="dialog-body help">
+<p>工具識別格式：<code>1. [SPEAKER_02] [00:00:00.000 - 00:00:00.500] 碰到啊</code></p>
+<p>可接受編號前後空白、時間碼左右空白，以及沒有句型編號的行。未符合格式的內容會以「未解析原始行」保留並原樣輸出。</p>
+<p>第一份載入的 TXT 是主檔，決定預設下載檔名。之後選取、拖入或再次載入的 TXT 會依順序接在現有內容下方，不會取代第一份資料，也不會自動重新編號。</p>
+<p>所有操作只在目前瀏覽器頁面執行，不使用 localStorage，也不會上傳檔案。</p>
+</div>
+</dialog>
+<div class="toast" id="toast"></div>
+<script>
+    "use strict";
+
+    const defaultTempWords = ["嗯", "然後", "就是", "所以", "但是"];
+
+    const state = {
+      rows: [],
+      fileName: "output.txt",
+      search: "",
+      searchField: "all",
+      filterMode: "all",
+      speakerFilter: "",
+      tempWords: [...defaultTempWords],
+      importedFiles: []
+    };
+
+    const pattern = /^\s*(?:(\d+)\.\s*)?\[([^\]]+)\]\s*\[\s*(\d{1,4}:\d{2}:\d{2}\.\d{3})\s*-\s*(\d{1,4}:\d{2}:\d{2}\.\d{3})\s*\]\s*(.*)$/;
+    const $ = (id) => document.getElementById(id);
+
+    const els = {
+      fileInput: $("fileInput"), fileLabel: $("fileLabel"), dropzone: $("dropzone"),
+      encoding: $("encoding"), lineEnding: $("lineEnding"), fileNameInput: $("fileNameInput"),
+      pasteInput: $("pasteInput"), parsePasteBtn: $("parsePasteBtn"), appendPasteBtn: $("appendPasteBtn"),
+      outputScope: $("outputScope"), helpBtn: $("helpBtn"), previewBtn: $("previewBtn"), copyBtn: $("copyBtn"), downloadBtn: $("downloadBtn"),
+      searchInput: $("searchInput"), searchField: $("searchField"), filterMode: $("filterMode"), speakerFilter: $("speakerFilter"),
+      clearSearchBtn: $("clearSearchBtn"), selectAllBtn: $("selectAllBtn"), selectNoneBtn: $("selectNoneBtn"), deleteSelectedBtn: $("deleteSelectedBtn"), matchNote: $("matchNote"),
+      replaceInput: $("replaceInput"), replaceAllBtn: $("replaceAllBtn"),
+      insertRowNumber: $("insertRowNumber"), addRowBtn: $("addRowBtn"), renumberStart: $("renumberStart"), renumberStep: $("renumberStep"), renumberBtn: $("renumberBtn"),
+      batchSpeaker: $("batchSpeaker"), speakerList: $("speakerList"), setSpeakerBtn: $("setSpeakerBtn"), shiftMs: $("shiftMs"), shiftTimeBtn: $("shiftTimeBtn"),
+      batchTextAction: $("batchTextAction"), batchTextValue: $("batchTextValue"), batchTextScope: $("batchTextScope"), applyBatchTextBtn: $("applyBatchTextBtn"),
+      totalBadge: $("totalBadge"), parsedBadge: $("parsedBadge"), unparsedBadge: $("unparsedBadge"), selectedBadge: $("selectedBadge"), fileBadge: $("fileBadge"),
+      tableWrap: $("tableWrap"), emptyState: $("emptyState"), editorTable: $("editorTable"), editorBody: $("editorBody"), masterCheck: $("masterCheck"),
+      tempWordsGrid: $("tempWordsGrid"), resetTempWordsBtn: $("resetTempWordsBtn"),
+      previewDialog: $("previewDialog"), closePreviewBtn: $("closePreviewBtn"), previewText: $("previewText"), previewStats: $("previewStats"), applyPreviewBtn: $("applyPreviewBtn"), downloadPreviewBtn: $("downloadPreviewBtn"),
+      helpDialog: $("helpDialog"), closeHelpBtn: $("closeHelpBtn"), toast: $("toast")
+    };
+
+    function uid() {
+      return Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
+
+    function parseLine(line) {
+      const match = line.match(pattern);
+      if (!match) return { id: uid(), parsed: false, selected: false, raw: line };
+      return {
+        id: uid(), parsed: true, selected: false,
+        number: match[1] === undefined ? "" : match[1],
+        speaker: match[2].trim(), start: match[3], end: match[4], text: match[5] || ""
+      };
+    }
+
+    function splitLines(text) {
+      const normalized = String(text).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+      const lines = normalized.split("\n");
+      if (lines.length > 1 && lines.at(-1) === "") lines.pop();
+      return lines;
+    }
+
+    function parseRows(text) {
+      return splitLines(text).map(parseLine);
+    }
+
+    function setRowsFromText(text, append = false) {
+      const rows = parseRows(text);
+      state.rows = append ? state.rows.concat(rows) : rows;
+      render();
+      toast(`${append ? "已附加" : "已解析"} ${rows.length} 行`);
+    }
+
+    function outputLine(row) {
+      if (!row.parsed) return row.raw ?? "";
+      const prefix = String(row.number ?? "").trim() === "" ? "" : `${String(row.number).trim()}. `;
+      return `${prefix}[${row.speaker ?? ""}] [${row.start ?? ""} - ${row.end ?? ""}] ${row.text ?? ""}`.trimEnd();
+    }
+
+    function getOutputText(rows = state.rows) {
+      const ending = els.lineEnding.value === "lf" ? "\n" : "\r\n";
+      return rows.map(outputLine).join(ending);
+    }
+
+    function normalizedNumber(row) {
+      if (!row?.parsed || String(row.number ?? "").trim() === "") return null;
+      const number = Number(row.number);
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function rowSearchText(row, field) {
+      if (!row.parsed) return field === "speaker" ? "" : String(row.raw ?? "");
+      if (field === "text") return String(row.text ?? "");
+      if (field === "speaker") return String(row.speaker ?? "");
+      return `${row.number ?? ""} ${row.speaker ?? ""} ${row.start ?? ""} ${row.end ?? ""} ${row.text ?? ""}`;
+    }
+
+    function passesNonSearchFilters(row) {
+      if (state.filterMode === "parsed" && !row.parsed) return false;
+      if (state.filterMode === "unparsed" && row.parsed) return false;
+      if (state.filterMode === "selected" && !row.selected) return false;
+      if (state.filterMode === "emptyText") {
+        const value = row.parsed ? row.text : row.raw;
+        if (String(value ?? "").trim() !== "") return false;
+      }
+      if (state.speakerFilter && (!row.parsed || row.speaker !== state.speakerFilter)) return false;
+      return true;
+    }
+
+    function getVisibleEntries() {
+      const query = state.search.trim().toLocaleLowerCase("zh-Hant");
+      const entries = [];
+      state.rows.forEach((row, index) => {
+        if (!passesNonSearchFilters(row)) return;
+        if (query && !rowSearchText(row, state.searchField).toLocaleLowerCase("zh-Hant").includes(query)) return;
+        entries.push({ row, index });
+      });
+      return entries;
+    }
+
+    function getVisibleRows() {
+      return getVisibleEntries().map((entry) => entry.row);
+    }
+
+    function getScopedRows() {
+      if (els.outputScope.value === "selected") return state.rows.filter((row) => row.selected);
+      if (els.outputScope.value === "visible") return getVisibleRows();
+      return state.rows;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function copyText(text, successMessage = "已複製到剪貼簿") {
+      if (!text) {
+        toast("沒有可複製的內容");
+        return;
+      }
+      const fallback = () => {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+        toast(successMessage);
+      };
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(() => toast(successMessage)).catch(fallback);
+      } else {
+        fallback();
+      }
+    }
+
+    function renderTempWords() {
+      els.tempWordsGrid.innerHTML = state.tempWords.map((word, index) => `
+        <div class="temp-word-item">
+          <input class="temp-word-input" data-index="${index}" value="${escapeHtml(word)}" aria-label="暫存詞彙 ${index + 1}" />
+          <button class="copy-temp-word" data-index="${index}">複製</button>
+        </div>`).join("");
+    }
+
+    function getSpeakerCounts() {
+      const counts = new Map();
+      state.rows.forEach((row) => {
+        if (!row.parsed || !String(row.speaker ?? "").trim()) return;
+        counts.set(row.speaker, (counts.get(row.speaker) || 0) + 1);
+      });
+      return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0], "zh-Hant", { numeric: true }));
+    }
+
+    function updateSpeakerControls() {
+      const counts = getSpeakerCounts();
+      const current = state.speakerFilter;
+      els.speakerFilter.innerHTML = `<option value="">所有說話者</option>` + counts.map(([name, count]) =>
+        `<option value="${escapeHtml(name)}">${escapeHtml(name)}（${count}）</option>`
+      ).join("");
+      if (counts.some(([name]) => name === current)) els.speakerFilter.value = current;
+      else {
+        state.speakerFilter = "";
+        els.speakerFilter.value = "";
+      }
+      els.speakerList.innerHTML = counts.map(([name]) => `<option value="${escapeHtml(name)}"></option>`).join("");
+    }
+
+    function render() {
+      updateSpeakerControls();
+      const visibleEntries = getVisibleEntries();
+      els.emptyState.hidden = state.rows.length > 0;
+      els.editorTable.hidden = state.rows.length === 0;
+
+      if (state.rows.length === 0) {
+        els.editorBody.innerHTML = "";
+        updateStats(visibleEntries);
+        return;
+      }
+
+      els.editorBody.innerHTML = visibleEntries.map(({ row, index }) => {
+        const selectedClass = row.selected ? " selected" : "";
+        const commonActions = `
+          <option value="">選擇操作…</option>
+          <option value="insert-before">前插新行</option>
+          <option value="insert-after">後插新行</option>
+          <option value="duplicate">複製並插入</option>
+          <option value="move-up">上移一行</option>
+          <option value="move-down">下移一行</option>
+          <option value="delete">刪除此行</option>`;
+
+        if (!row.parsed) {
+          return `<tr class="unparsed${selectedClass}" data-id="${row.id}">
+            <td class="center"><input class="row-check" type="checkbox" data-index="${index}" ${row.selected ? "checked" : ""}></td>
+            <td colspan="4"><span class="badge warn">未解析原始行</span></td>
+            <td><input class="raw-input" data-field="raw" data-index="${index}" value="${escapeHtml(row.raw)}"></td>
+            <td class="center"><select class="row-action-select" data-index="${index}">
+              <option value="">選擇操作…</option>
+              <option value="parse">再次解析</option>
+              <option value="insert-before">前插新行</option>
+              <option value="insert-after">後插新行</option>
+              <option value="duplicate">複製並插入</option>
+              <option value="move-up">上移一行</option>
+              <option value="move-down">下移一行</option>
+              <option value="delete">刪除此行</option>
+            </select></td>
+          </tr>`;
+        }
+
+        return `<tr class="${selectedClass.trim()}" data-id="${row.id}">
+          <td class="center"><input class="row-check" type="checkbox" data-index="${index}" ${row.selected ? "checked" : ""}></td>
+          <td><input class="cell-input number" data-field="number" data-index="${index}" type="number" min="0" step="1" value="${escapeHtml(row.number)}"></td>
+          <td><input class="cell-input speaker" data-field="speaker" data-index="${index}" value="${escapeHtml(row.speaker)}"></td>
+          <td><input class="cell-input time" data-field="start" data-index="${index}" value="${escapeHtml(row.start)}"></td>
+          <td><input class="cell-input time" data-field="end" data-index="${index}" value="${escapeHtml(row.end)}"></td>
+          <td><input class="cell-input text" data-field="text" data-index="${index}" value="${escapeHtml(row.text)}"></td>
+          <td class="center"><select class="row-action-select" data-index="${index}">${commonActions}</select></td>
+        </tr>`;
+      }).join("");
+
+      const selectedVisible = visibleEntries.filter(({ row }) => row.selected).length;
+      els.masterCheck.checked = visibleEntries.length > 0 && selectedVisible === visibleEntries.length;
+      els.masterCheck.indeterminate = selectedVisible > 0 && selectedVisible < visibleEntries.length;
+      updateStats(visibleEntries);
+    }
+
+    function updateStats(visibleEntries = getVisibleEntries()) {
+      const parsed = state.rows.filter((row) => row.parsed).length;
+      const selected = state.rows.filter((row) => row.selected).length;
+      const unparsed = state.rows.length - parsed;
+      const scopedCount = getScopedRows().length;
+
+      els.totalBadge.textContent = `共 ${state.rows.length} 行`;
+      els.parsedBadge.textContent = `已解析 ${parsed} 行`;
+      els.unparsedBadge.textContent = `未解析 ${unparsed} 行`;
+      els.selectedBadge.textContent = `已選 ${selected} 行`;
+      els.fileBadge.textContent = `已載入 ${state.importedFiles.length} 個檔案`;
+      els.matchNote.textContent = `目前顯示 ${visibleEntries.length} 行${state.search.trim() ? `；搜尋「${state.search.trim()}」` : ""}`;
+
+      els.deleteSelectedBtn.disabled = selected === 0;
+      els.setSpeakerBtn.disabled = selected === 0;
+      els.shiftTimeBtn.disabled = selected === 0;
+      els.previewBtn.disabled = scopedCount === 0;
+      els.copyBtn.disabled = scopedCount === 0;
+      els.downloadBtn.disabled = scopedCount === 0;
+      els.replaceAllBtn.disabled = !state.search.trim() || visibleEntries.length === 0;
+    }
+
+    function toast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => els.toast.classList.remove("show"), 1900);
+    }
+
+    function decodeArrayBuffer(buffer, mode) {
+      if (mode === "utf-8") return new TextDecoder("utf-8").decode(buffer);
+      if (mode === "big5") return new TextDecoder("big5").decode(buffer);
+      const bytes = new Uint8Array(buffer);
+      if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) return new TextDecoder("utf-8").decode(buffer);
+      try {
+        return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+      } catch (_) {
+        try {
+          return new TextDecoder("big5", { fatal: true }).decode(buffer);
+        } catch (_) {
+          return new TextDecoder("utf-8").decode(buffer);
+        }
+      }
+    }
+
+    function baseFileName(name) {
+      return String(name || "output.txt").replace(/\.txt$/i, "");
+    }
+
+    function refreshFileLabel() {
+      if (!state.importedFiles.length) {
+        els.fileLabel.textContent = "可重複載入；後續檔案不會取代第一份內容";
+        return;
+      }
+      const totalSize = state.importedFiles.reduce((sum, file) => sum + file.size, 0);
+      const primary = state.importedFiles[0].name;
+      const appended = state.importedFiles.length - 1;
+      els.fileLabel.textContent = `${primary}${appended ? ` ＋ ${appended} 個附加檔案` : ""} · ${(totalSize / 1024).toFixed(1)} KB`;
+    }
+
+    async function loadFiles(fileList) {
+      const files = Array.from(fileList || []);
+      if (!files.length) return;
+      let loaded = 0;
+      let addedRows = 0;
+      const startingEmpty = state.rows.length === 0;
+
+      for (let index = 0; index < files.length; index++) {
+        const file = files[index];
+        try {
+          const buffer = await file.arrayBuffer();
+          const text = decodeArrayBuffer(buffer, els.encoding.value);
+          const rows = parseRows(text);
+          const shouldReplace = startingEmpty && index === 0;
+          state.rows = shouldReplace ? rows : state.rows.concat(rows);
+          if (shouldReplace && state.importedFiles.length === 0) {
+            state.fileName = `${baseFileName(file.name)}_edited.txt`;
+            els.fileNameInput.value = state.fileName;
+          }
+          state.importedFiles.push({ name: file.name, size: file.size });
+          loaded++;
+          addedRows += rows.length;
+        } catch (_) {
+          toast(`無法讀取 ${file.name}，請確認編碼`);
+        }
+      }
+
+      refreshFileLabel();
+      render();
+      if (loaded) toast(`已載入 ${loaded} 個檔案，共加入 ${addedRows} 行；後續內容已接在末尾`);
+    }
+
+    function sanitizeFileName(name) {
+      const cleaned = String(name || "output.txt").trim().replace(/[\\/:*?"<>|]/g, "_");
+      if (!cleaned) return "output.txt";
+      return /\.txt$/i.test(cleaned) ? cleaned : `${cleaned}.txt`;
+    }
+
+    function downloadText(text, fileName = state.fileName) {
+      const blob = new Blob(["\uFEFF", text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = sanitizeFileName(fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast("已產生 TXT 檔");
+    }
+
+    function timeToMs(value) {
+      const match = String(value).trim().match(/^(\d{1,4}):(\d{2}):(\d{2})\.(\d{3})$/);
+      if (!match) return null;
+      const [, h, m, s, ms] = match.map(Number);
+      if (m > 59 || s > 59) return null;
+      return (((h * 60 + m) * 60 + s) * 1000 + ms);
+    }
+
+    function msToTime(value) {
+      const total = Math.max(0, Math.round(value));
+      const ms = total % 1000;
+      const totalSeconds = Math.floor(total / 1000);
+      const seconds = totalSeconds % 60;
+      const totalMinutes = Math.floor(totalSeconds / 60);
+      const minutes = totalMinutes % 60;
+      const hours = Math.floor(totalMinutes / 60);
+      return [String(hours).padStart(2, "0"), String(minutes).padStart(2, "0"), String(seconds).padStart(2, "0")].join(":") + "." + String(ms).padStart(3, "0");
+    }
+
+    function shiftNumbersFrom(threshold, delta) {
+      state.rows.forEach((row) => {
+        const number = normalizedNumber(row);
+        if (number !== null && number >= threshold) row.number = number + delta;
+      });
+    }
+
+    function getRowContext(insertIndex) {
+      const previousParsed = [...state.rows.slice(0, insertIndex)].reverse().find((row) => row.parsed);
+      const nextParsed = state.rows.slice(insertIndex).find((row) => row.parsed);
+      const anchorTime = previousParsed?.end || nextParsed?.start || "00:00:00.000";
+      return {
+        speaker: previousParsed?.speaker || nextParsed?.speaker || "SPEAKER_01",
+        start: anchorTime,
+        end: anchorTime
+      };
+    }
+
+    function createBlankRow(number, insertIndex) {
+      return { id: uid(), parsed: true, selected: false, number, ...getRowContext(insertIndex), text: "" };
+    }
+
+    function focusRow(rowId) {
+      requestAnimationFrame(() => {
+        const rowElement = els.editorBody.querySelector(`[data-id="${rowId}"]`);
+        rowElement?.scrollIntoView({ block: "center" });
+        rowElement?.querySelector('[data-field="text"]')?.focus();
+      });
+    }
+
+    function insertAtNumber(targetNumber) {
+      let insertIndex = state.rows.findIndex((row) => {
+        const number = normalizedNumber(row);
+        return number !== null && number >= targetNumber;
+      });
+      if (insertIndex === -1) insertIndex = state.rows.length;
+      shiftNumbersFrom(targetNumber, 1);
+      const newRow = createBlankRow(targetNumber, insertIndex);
+      state.rows.splice(insertIndex, 0, newRow);
+      render();
+      focusRow(newRow.id);
+      toast(`已插入編號 ${targetNumber}；後續編號已遞延`);
+    }
+
+    function deriveInsertNumber(index, position) {
+      const row = state.rows[index];
+      const current = normalizedNumber(row);
+      if (current !== null) return position === "before" ? current : current + 1;
+      const previous = [...state.rows.slice(0, position === "before" ? index : index + 1)].reverse().find((item) => normalizedNumber(item) !== null);
+      const previousNumber = normalizedNumber(previous);
+      return previousNumber === null ? 1 : previousNumber + 1;
+    }
+
+    function insertRelative(index, position) {
+      const insertIndex = position === "before" ? index : index + 1;
+      const number = deriveInsertNumber(index, position);
+      shiftNumbersFrom(number, 1);
+      const newRow = createBlankRow(number, insertIndex);
+      state.rows.splice(insertIndex, 0, newRow);
+      render();
+      focusRow(newRow.id);
+      toast(`已在目前行${position === "before" ? "前" : "後"}插入新行`);
+    }
+
+    function duplicateRow(index) {
+      const source = state.rows[index];
+      if (!source) return;
+      const copy = JSON.parse(JSON.stringify(source));
+      copy.id = uid();
+      copy.selected = false;
+      const number = normalizedNumber(source);
+      if (number !== null) {
+        shiftNumbersFrom(number + 1, 1);
+        copy.number = number + 1;
+      }
+      state.rows.splice(index + 1, 0, copy);
+      render();
+      focusRow(copy.id);
+      toast("已複製此行並插入下方");
+    }
+
+    function moveRow(index, delta) {
+      const target = index + delta;
+      if (target < 0 || target >= state.rows.length) {
+        toast(delta < 0 ? "已在最上方" : "已在最下方");
+        return;
+      }
+      [state.rows[index], state.rows[target]] = [state.rows[target], state.rows[index]];
+      const movedId = state.rows[target].id;
+      render();
+      focusRow(movedId);
+      toast(delta < 0 ? "已上移一行" : "已下移一行");
+    }
+
+    function executeRowAction(index, action) {
+      const row = state.rows[index];
+      if (!row || !action) return;
+      if (action === "insert-before") insertRelative(index, "before");
+      else if (action === "insert-after") insertRelative(index, "after");
+      else if (action === "duplicate") duplicateRow(index);
+      else if (action === "move-up") moveRow(index, -1);
+      else if (action === "move-down") moveRow(index, 1);
+      else if (action === "delete") {
+        state.rows.splice(index, 1);
+        render();
+        toast("已刪除此行");
+      } else if (action === "parse") {
+        if (row.parsed) return;
+        const parsed = parseLine(row.raw);
+        parsed.selected = row.selected;
+        state.rows[index] = parsed;
+        render();
+        toast(parsed.parsed ? "此行已解析" : "此行仍不符合格式");
+      }
+    }
+
+    function countOccurrences(text, query) {
+      if (!query) return 0;
+      const source = String(text ?? "").toLocaleLowerCase("zh-Hant");
+      const needle = query.toLocaleLowerCase("zh-Hant");
+      let count = 0;
+      let position = 0;
+      while ((position = source.indexOf(needle, position)) !== -1) {
+        count++;
+        position += Math.max(needle.length, 1);
+      }
+      return count;
+    }
+
+    function replaceInsensitive(text, query, replacement) {
+      if (!query) return String(text ?? "");
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return String(text ?? "").replace(new RegExp(escaped, "gi"), replacement);
+    }
+
+    function replaceCurrentResults() {
+      const query = state.search.trim();
+      if (!query) {
+        toast("請先輸入搜尋文字");
+        return;
+      }
+      const visibleRows = getVisibleRows();
+      const visibleIds = new Set(visibleRows.map((row) => row.id));
+      const replacement = els.replaceInput.value;
+      let changes = 0;
+
+      state.rows.forEach((row) => {
+        if (!visibleIds.has(row.id)) return;
+        if (!row.parsed) {
+          if (state.searchField !== "speaker") {
+            changes += countOccurrences(row.raw, query);
+            row.raw = replaceInsensitive(row.raw, query, replacement);
+          }
+          return;
+        }
+        if (state.searchField === "text") {
+          changes += countOccurrences(row.text, query);
+          row.text = replaceInsensitive(row.text, query, replacement);
+        } else if (state.searchField === "speaker") {
+          changes += countOccurrences(row.speaker, query);
+          row.speaker = replaceInsensitive(row.speaker, query, replacement);
+        } else {
+          changes += countOccurrences(row.speaker, query) + countOccurrences(row.text, query);
+          row.speaker = replaceInsensitive(row.speaker, query, replacement);
+          row.text = replaceInsensitive(row.text, query, replacement);
+        }
+      });
+
+      render();
+      toast(changes ? `已取代 ${changes} 處` : "沒有可取代的內容");
+    }
+
+    function applyBatchText() {
+      const scope = els.batchTextScope.value;
+      const targets = scope === "visible" ? getVisibleRows() : state.rows.filter((row) => row.selected);
+      if (!targets.length) {
+        toast(scope === "visible" ? "目前篩選結果沒有資料" : "尚未選取資料");
+        return;
+      }
+      const action = els.batchTextAction.value;
+      const value = els.batchTextValue.value;
+      if (["prefix", "suffix", "remove"].includes(action) && value === "") {
+        toast("請輸入要處理的文字");
+        return;
+      }
+      let changed = 0;
+      targets.forEach((row) => {
+        const field = row.parsed ? "text" : "raw";
+        const original = String(row[field] ?? "");
+        let next = original;
+        if (action === "prefix") next = value + original;
+        if (action === "suffix") next = original + value;
+        if (action === "remove") next = original.split(value).join("");
+        if (action === "trim") next = original.trim();
+        if (action === "collapse") next = original.replace(/[\s\u3000]+/g, " ").trim();
+        if (next !== original) {
+          row[field] = next;
+          changed++;
+        }
+      });
+      render();
+      toast(`已處理 ${changed} 行`);
+    }
+
+    els.fileInput.addEventListener("change", async (event) => {
+      await loadFiles(event.target.files);
+      event.target.value = "";
+    });
+
+    ["dragenter", "dragover"].forEach((name) => {
+      els.dropzone.addEventListener(name, (event) => {
+        event.preventDefault();
+        els.dropzone.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach((name) => {
+      els.dropzone.addEventListener(name, (event) => {
+        event.preventDefault();
+        els.dropzone.classList.remove("dragover");
+      });
+    });
+
+    els.dropzone.addEventListener("drop", (event) => loadFiles(event.dataTransfer.files));
+
+    els.parsePasteBtn.addEventListener("click", () => {
+      if (!els.pasteInput.value) return toast("貼上區目前沒有內容");
+      state.importedFiles = [];
+      refreshFileLabel();
+      state.fileName = "output_edited.txt";
+      els.fileNameInput.value = state.fileName;
+      setRowsFromText(els.pasteInput.value, false);
+    });
+
+    els.appendPasteBtn.addEventListener("click", () => {
+      if (!els.pasteInput.value) return toast("貼上區目前沒有內容");
+      setRowsFromText(els.pasteInput.value, true);
+    });
+
+    els.fileNameInput.addEventListener("input", () => { state.fileName = els.fileNameInput.value; });
+
+    els.searchInput.addEventListener("input", () => {
+      state.search = els.searchInput.value;
+      render();
+    });
+    els.searchField.addEventListener("change", () => { state.searchField = els.searchField.value; render(); });
+    els.filterMode.addEventListener("change", () => { state.filterMode = els.filterMode.value; render(); });
+    els.speakerFilter.addEventListener("change", () => { state.speakerFilter = els.speakerFilter.value; render(); });
+
+    els.clearSearchBtn.addEventListener("click", () => {
+      state.search = "";
+      state.searchField = "all";
+      state.filterMode = "all";
+      state.speakerFilter = "";
+      els.searchInput.value = "";
+      els.searchField.value = "all";
+      els.filterMode.value = "all";
+      render();
+    });
+
+    els.selectAllBtn.addEventListener("click", () => {
+      const visibleIds = new Set(getVisibleRows().map((row) => row.id));
+      state.rows.forEach((row) => { if (visibleIds.has(row.id)) row.selected = true; });
+      render();
+    });
+
+    els.selectNoneBtn.addEventListener("click", () => {
+      state.rows.forEach((row) => row.selected = false);
+      render();
+    });
+
+    els.deleteSelectedBtn.addEventListener("click", () => {
+      const count = state.rows.filter((row) => row.selected).length;
+      if (!count) return;
+      state.rows = state.rows.filter((row) => !row.selected);
+      render();
+      toast(`已刪除 ${count} 行`);
+    });
+
+    els.masterCheck.addEventListener("change", () => {
+      const visibleIds = new Set(getVisibleRows().map((row) => row.id));
+      state.rows.forEach((row) => { if (visibleIds.has(row.id)) row.selected = els.masterCheck.checked; });
+      render();
+    });
+
+    els.replaceAllBtn.addEventListener("click", replaceCurrentResults);
+
+    els.addRowBtn.addEventListener("click", () => {
+      const targetNumber = Number(els.insertRowNumber.value);
+      if (!Number.isInteger(targetNumber) || targetNumber < 0) return toast("請輸入有效的插入編號");
+      insertAtNumber(targetNumber);
+    });
+
+    els.renumberBtn.addEventListener("click", () => {
+      const start = Number(els.renumberStart.value);
+      const step = Number(els.renumberStep.value);
+      if (!Number.isFinite(start) || !Number.isFinite(step) || step <= 0) return toast("請輸入有效的起始編號與間隔");
+      const selectedParsed = state.rows.filter((row) => row.selected && row.parsed);
+      const targets = selectedParsed.length ? selectedParsed : state.rows.filter((row) => row.parsed);
+      targets.forEach((row, index) => row.number = start + index * step);
+      render();
+      toast(`已重新編號 ${targets.length} 行`);
+    });
+
+    els.setSpeakerBtn.addEventListener("click", () => {
+      const value = els.batchSpeaker.value.trim();
+      if (!value) return toast("請輸入說話者名稱");
+      const targets = state.rows.filter((row) => row.selected && row.parsed);
+      targets.forEach((row) => row.speaker = value);
+      render();
+      toast(`已修改 ${targets.length} 行的說話者`);
+    });
+
+    els.shiftTimeBtn.addEventListener("click", () => {
+      const delta = Number(els.shiftMs.value);
+      if (!Number.isFinite(delta)) return toast("請輸入有效的毫秒數");
+      const targets = state.rows.filter((row) => row.selected && row.parsed);
+      let changed = 0;
+      let invalid = 0;
+      targets.forEach((row) => {
+        const start = timeToMs(row.start);
+        const end = timeToMs(row.end);
+        if (start === null || end === null) {
+          invalid++;
+          return;
+        }
+        row.start = msToTime(start + delta);
+        row.end = msToTime(end + delta);
+        changed++;
+      });
+      render();
+      toast(invalid ? `已位移 ${changed} 行；${invalid} 行時間格式無效` : `已位移 ${changed} 行`);
+    });
+
+    els.batchTextAction.addEventListener("change", () => {
+      els.batchTextValue.disabled = ["trim", "collapse"].includes(els.batchTextAction.value);
+    });
+    els.applyBatchTextBtn.addEventListener("click", applyBatchText);
+
+    els.editorBody.addEventListener("input", (event) => {
+      const field = event.target.dataset.field;
+      const index = Number(event.target.dataset.index);
+      if (!field || !state.rows[index]) return;
+      state.rows[index][field] = event.target.value;
+    });
+
+    els.editorBody.addEventListener("change", (event) => {
+      const index = Number(event.target.dataset.index);
+      if (event.target.classList.contains("row-check")) {
+        if (!state.rows[index]) return;
+        state.rows[index].selected = event.target.checked;
+        render();
+        return;
+      }
+      if (event.target.classList.contains("row-action-select")) {
+        const action = event.target.value;
+        event.target.value = "";
+        executeRowAction(index, action);
+        return;
+      }
+      if (event.target.dataset.field === "speaker" || (event.target.dataset.field && (state.search || state.filterMode !== "all" || state.speakerFilter))) render();
+      else updateStats();
+    });
+
+    els.tempWordsGrid.addEventListener("input", (event) => {
+      if (!event.target.classList.contains("temp-word-input")) return;
+      state.tempWords[Number(event.target.dataset.index)] = event.target.value;
+    });
+
+    els.tempWordsGrid.addEventListener("click", (event) => {
+      if (!event.target.classList.contains("copy-temp-word")) return;
+      const word = state.tempWords[Number(event.target.dataset.index)];
+      if (!word) return toast("此暫存詞彙是空白的");
+      copyText(word, `已複製「${word}」`);
+    });
+
+    els.resetTempWordsBtn.addEventListener("click", () => {
+      state.tempWords = [...defaultTempWords];
+      renderTempWords();
+      toast("已恢復預設詞彙");
+    });
+
+    els.outputScope.addEventListener("change", () => updateStats());
+
+    els.previewBtn.addEventListener("click", () => {
+      const rows = getScopedRows();
+      const text = getOutputText(rows);
+      els.previewText.value = text;
+      const scopeLabel = els.outputScope.options[els.outputScope.selectedIndex].text;
+      els.previewStats.textContent = `${scopeLabel} · ${rows.length} 行 · ${text.length.toLocaleString()} 個字元`;
+      els.applyPreviewBtn.disabled = els.outputScope.value !== "all";
+      els.previewDialog.showModal();
+    });
+
+    els.closePreviewBtn.addEventListener("click", () => els.previewDialog.close());
+
+    els.applyPreviewBtn.addEventListener("click", () => {
+      if (els.outputScope.value !== "all") return;
+      setRowsFromText(els.previewText.value, false);
+      els.previewDialog.close();
+      toast("預覽內容已套用");
+    });
+
+    els.downloadPreviewBtn.addEventListener("click", () => downloadText(els.previewText.value, state.fileName));
+    els.copyBtn.addEventListener("click", () => copyText(getOutputText(getScopedRows())));
+    els.downloadBtn.addEventListener("click", () => downloadText(getOutputText(getScopedRows()), state.fileName));
+
+    els.lineEnding.addEventListener("change", () => {
+      if (els.previewDialog.open) els.previewText.value = getOutputText(getScopedRows());
+    });
+
+    els.helpBtn.addEventListener("click", () => els.helpDialog.showModal());
+    els.closeHelpBtn.addEventListener("click", () => els.helpDialog.close());
+
+    renderTempWords();
+    render();
+  </script>
+</body>
+</html>
