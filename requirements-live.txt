@@ -1,0 +1,11 @@
+# Add-on runtime. CUDA torch is installed by install_torch_cuda.ps1.
+# Keep the WLK adapter and this tested API version together.
+whisperlivekit==0.2.26
+fastapi==0.141.1
+starlette==1.3.1
+python-multipart==0.0.32
+librosa==1.0.0
+websockets==17.1
+soundfile==0.14.0
+tiktoken==0.14.0
+opencc-python-reimplemented==0.1.7

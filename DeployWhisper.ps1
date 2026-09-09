@@ -321,6 +321,7 @@ print(f"pyannote 模型下載完成：{target_dir}")
     Write-Host "1. 雙擊 WhisperDoctor.cmd 檢查環境。"
     Write-Host "2. 雙擊 RunWhisper.cmd 啟動介面。"
     Write-Host "3. NVIDIA 使用者若要 GPU 加速，再開啟 WhisperTools.cmd，執行選項 6 與選項 2。"
+    Write-Host "4. 如需即時收音及邊聽邊改文字稿，再執行 DeployLive.cmd；會議前請先完成部署與離線測試。"
     exit 0
 } catch {
     Write-Host ""

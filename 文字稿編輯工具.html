@@ -821,6 +821,24 @@
       .replace-inline .replace-row { grid-template-columns: 1fr; }
       .tool-grid { grid-template-columns: 1fr; }
     }
+    /* Embedded editor: keep the transcript visible; advanced tools remain available. */
+    .live-embedded { --primary:#096b60; --primary-hover:#075c52; --primary-soft:#e4f3ef; --shadow:none; }
+    .live-embedded .legacy-header { display:none; }
+    .live-embedded .app { max-width:none; padding:12px; }
+    .live-embedded .command-upper { grid-template-columns:minmax(0,1fr); }
+    .live-embedded .temp-panel { border-top:1px solid var(--line); min-height:0; }
+    .live-embedded .searchbar { grid-template-columns:minmax(200px,1fr) 150px 150px 150px; }
+    .live-embedded .table-wrap { max-height:none; overflow:auto; }
+    .live-embedded body { font-size:15px; background:#f4f7f7; }
+    .live-embedded main { min-width:0; align-content:start; }
+    .live-embedded details.panel:not([open]) { padding-bottom:0; }
+    .live-embedded details.panel > summary { min-height:48px; font-size:14px; }
+    .live-embedded button,.live-embedded select { min-height:40px; font-size:14px; }
+    .live-embedded .cell-input { font-size:16px; min-height:44px; }
+    .live-embedded td { padding:8px; }
+    .live-embedded input[type=checkbox] { width:18px; height:18px; }
+    .live-embedded input:focus-visible,.live-embedded button:focus-visible,.live-embedded summary:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+    @media(prefers-reduced-motion:reduce) { button { transition:none; } }
 </style>
 </head>
 <body>
@@ -1232,19 +1250,7 @@
       els.speakerList.innerHTML = counts.map(([name]) => `<option value="${escapeHtml(name)}"></option>`).join("");
     }
 
-    function render() {
-      updateSpeakerControls();
-      const visibleEntries = getVisibleEntries();
-      els.emptyState.hidden = state.rows.length > 0;
-      els.editorTable.hidden = state.rows.length === 0;
-
-      if (state.rows.length === 0) {
-        els.editorBody.innerHTML = "";
-        updateStats(visibleEntries);
-        return;
-      }
-
-      els.editorBody.innerHTML = visibleEntries.map(({ row, index }) => {
+    function rowMarkup({row, index}) {
         const selectedClass = row.selected ? " selected" : "";
         const commonActions = `
           <option value="">選擇操作…</option>
@@ -1282,7 +1288,22 @@
           <td><input class="cell-input text" data-field="text" data-index="${index}" value="${escapeHtml(row.text)}"></td>
           <td class="center"><select class="row-action-select" data-index="${index}">${commonActions}</select></td>
         </tr>`;
-      }).join("");
+
+    }
+
+    function render() {
+      updateSpeakerControls();
+      const visibleEntries = getVisibleEntries();
+      els.emptyState.hidden = state.rows.length > 0;
+      els.editorTable.hidden = state.rows.length === 0;
+
+      if (state.rows.length === 0) {
+        els.editorBody.innerHTML = "";
+        updateStats(visibleEntries);
+        return;
+      }
+
+      els.editorBody.innerHTML = visibleEntries.map(rowMarkup).join("");
 
       const selectedVisible = visibleEntries.filter(({ row }) => row.selected).length;
       els.masterCheck.checked = visibleEntries.length > 0 && selectedVisible === visibleEntries.length;
@@ -1834,6 +1855,59 @@
     els.helpBtn.addEventListener("click", () => els.helpDialog.showModal());
     els.closeHelpBtn.addEventListener("click", () => els.helpDialog.close());
 
+
+    // Same-origin embedding only. Standalone use retains the original file workflow.
+    const liveSeen = new Set();
+    window.transcriptBridge = {
+      snapshot() { return {text: getOutputText(), seen: [...liveSeen]}; },
+      reset(text = "", seen = []) {
+        liveSeen.clear();
+        seen.forEach(id => liveSeen.add(id));
+        state.rows = text ? parseRows(text) : [];
+        state.search = ""; state.filterMode = "all"; state.speakerFilter = "";
+        els.searchInput.value = ""; els.filterMode.value = "all"; els.speakerFilter.value = "";
+        render();
+      },
+      append(segments) {
+        const first = state.rows.length;
+        let number = state.rows.reduce((max, row) => Math.max(max, normalizedNumber(row) || 0), 0);
+        for (const segment of segments) {
+          if (liveSeen.has(segment.id)) continue;
+          liveSeen.add(segment.id);
+          state.rows.push({id: uid(), parsed: true, selected: false, number: ++number,
+            speaker: segment.speaker || "待標註", start: msToTime(segment.start * 1000),
+            end: msToTime(segment.end * 1000), text: segment.text});
+        }
+        // Append DOM nodes only: never replace an existing input or interrupt IME.
+        const added = getVisibleEntries().filter(entry => entry.index >= first);
+        els.editorBody.insertAdjacentHTML("beforeend", added.map(rowMarkup).join(""));
+        els.emptyState.hidden = state.rows.length > 0;
+        els.editorTable.hidden = state.rows.length === 0;
+        updateStats();
+        return state.rows.length - first;
+      }
+    };
+    if (window.parent !== window && location.pathname === "/live/editor") {
+      document.documentElement.classList.add("live-embedded");
+      document.querySelectorAll("details").forEach(element => element.open = false);
+      const outputActions = document.querySelector(".output-actions");
+      document.querySelector("main").prepend(outputActions);
+      const command = document.querySelector(".command-panel");
+      const advanced = document.createElement("details");
+      advanced.className = "panel";
+      const summary = document.createElement("summary");
+      summary.textContent = "搜尋、取代與批次工具";
+      command.replaceWith(advanced);
+      advanced.append(summary, command);
+      els.emptyState.textContent = "確認後的語句會自動加入這裡。也可展開「匯入與輸出」載入既有 TXT。";
+      document.querySelectorAll("p").forEach(p => {
+        if (p.textContent.includes("不使用 localStorage")) p.textContent =
+          "即時工作台會將修改自動儲存到本機工作資料夾，不使用雲端。獨立開啟本工具時，請自行下載儲存。";
+      });
+      for (const type of ["input", "change", "click"]) document.addEventListener(type, () => {
+        window.parent.postMessage({type: "editor-dirty"}, location.origin);
+      });
+    }
     renderTempWords();
     render();
   </script>

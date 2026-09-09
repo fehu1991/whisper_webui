@@ -9,6 +9,10 @@ import warnings
 from pathlib import Path
 from typing import Any, Iterator
 
+from whisper_app.privacy import configure_offline
+
+configure_offline(Path(__file__).resolve().parent)
+
 import gradio as gr
 import imageio_ffmpeg
 
@@ -51,6 +55,7 @@ from whisper_app.services.storage import (
     plan_wheel_cache_cleanup,
     storage_summary,
 )
+from whisper_app.services.timing import format_elapsed
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -474,7 +479,10 @@ def _sort_audio_files(files: list[Any], sort_mode: str) -> list[str]:
 
 def preview_batch_queue(files: list[Any] | None, sort_mode: str) -> tuple[list[list[Any]], str]:
     paths = _sort_audio_files(files or [], sort_mode)
-    rows = [[index, Path(path).name, "等待處理"] for index, path in enumerate(paths, start=1)]
+    rows = [
+        [index, Path(path).name, "等待處理", "—"]
+        for index, path in enumerate(paths, start=1)
+    ]
     status = f"已排序 {len(rows)} 個音檔。" if rows else "尚未加入批次音檔。"
     return rows, status
 
@@ -576,6 +584,7 @@ def _transcribe_impl(
         str,
     ]
 ]:
+    started_at = time.monotonic()
     _save_current_settings(request, quality_profile)
     segments: list[TranscriptSegment] = []
     runtime = RuntimeSelection(
@@ -610,7 +619,10 @@ def _transcribe_impl(
                 detected,
                 [],
                 None,
-                f"{event.message} {status_prefix}",
+                (
+                    f"{event.message} {status_prefix}，"
+                    f"已用時：{format_elapsed(time.monotonic() - started_at)}"
+                ),
             )
             continue
         if event.segment is not None:
@@ -648,7 +660,8 @@ def _transcribe_impl(
                     "轉錄中... 已完成到 "
                     f"{_format_timestamp(event.segment.end)}，"
                     f"目前分段數：{len(segments)}，"
-                    f"{status_prefix}"
+                    f"{status_prefix}，"
+                    f"已用時：{format_elapsed(time.monotonic() - started_at)}"
                 ),
             )
         elif event.stage == "completed":
@@ -753,6 +766,7 @@ def _transcribe_impl(
         diarization_segments=speaker_segments,
         token=token,
     )
+    elapsed_seconds = time.monotonic() - started_at
     write_history_manifest(
         OUTPUT_DIR,
         stem=bundle.stem,
@@ -761,6 +775,7 @@ def _transcribe_impl(
         device=runtime.device,
         compute_type=runtime.compute_type,
         segment_count=len(segments),
+        elapsed_seconds=elapsed_seconds,
         files=bundle.files,
     )
     status_parts = [
@@ -770,6 +785,7 @@ def _transcribe_impl(
         f"精度：{runtime.compute_type}",
         f"分段數：{len(segments)}",
         f"輸出檔數：{len(bundle.files)}",
+        f"用時：{format_elapsed(elapsed_seconds)}",
     ]
     if runtime.note:
         status_parts.append(runtime.note)
@@ -1035,7 +1051,7 @@ def _batch_entry(
             f"{len(paths)} 個音檔",
         ) as token:
             queue_rows = [
-                [index, Path(path).name, "等待處理"]
+                [index, Path(path).name, "等待處理", "—"]
                 for index, path in enumerate(paths, start=1)
             ]
             all_output_files: list[str] = []
@@ -1055,7 +1071,9 @@ def _batch_entry(
 
             for index, path in enumerate(paths, start=1):
                 token.raise_if_cancelled()
+                file_started_at = time.monotonic()
                 queue_rows[index - 1][2] = "處理中"
+                queue_rows[index - 1][3] = format_elapsed(0)
                 batch_status = (
                     f"{prefix}處理中：{index}/{len(paths)} - "
                     f"{Path(path).name}"
@@ -1069,26 +1087,26 @@ def _batch_entry(
                     queue_rows,
                     all_output_files or None,
                 )
-                request = _create_request(
-                    path,
-                    model_size,
-                    language,
-                    task,
-                    beam_size,
-                    vad_filter,
-                    word_timestamps,
-                    device,
-                    compute_type,
-                    output_formats,
-                    enable_diarization,
-                    hf_token,
-                    diarization_model_path,
-                    num_speakers,
-                    min_speakers,
-                    max_speakers,
-                    include_segment_numbers,
-                )
                 try:
+                    request = _create_request(
+                        path,
+                        model_size,
+                        language,
+                        task,
+                        beam_size,
+                        vad_filter,
+                        word_timestamps,
+                        device,
+                        compute_type,
+                        output_formats,
+                        enable_diarization,
+                        hf_token,
+                        diarization_model_path,
+                        num_speakers,
+                        min_speakers,
+                        max_speakers,
+                        include_segment_numbers,
+                    )
                     last_files: list[str] | None = None
                     for (
                         text,
@@ -1106,6 +1124,9 @@ def _batch_entry(
                         last_segments = segments
                         if files:
                             last_files = files
+                        queue_rows[index - 1][3] = format_elapsed(
+                            time.monotonic() - file_started_at
+                        )
                         yield (
                             text,
                             detected,
@@ -1120,9 +1141,15 @@ def _batch_entry(
                     queue_rows[index - 1][2] = "完成"
                 except JobCancelledError:
                     queue_rows[index - 1][2] = "已取消"
+                    queue_rows[index - 1][3] = format_elapsed(
+                        time.monotonic() - file_started_at
+                    )
                     raise
                 except Exception as exc:
                     queue_rows[index - 1][2] = f"失敗：{exc}"
+                queue_rows[index - 1][3] = format_elapsed(
+                    time.monotonic() - file_started_at
+                )
 
                 completed = sum(
                     row[2] == "完成" for row in queue_rows
@@ -1590,7 +1617,7 @@ THEME = gr.themes.Soft(
     ],
 )
 
-with gr.Blocks(title="Whisper 語音轉文字") as demo:
+with gr.Blocks(title="Whisper 語音轉文字", analytics_enabled=False) as demo:
     gr.HTML(
         """
         <div id="desktop-width-warning" aria-hidden="true">
@@ -1609,6 +1636,7 @@ with gr.Blocks(title="Whisper 語音轉文字") as demo:
             <div class="app-subtitle">轉錄、批次排序、說話人標註與字幕輸出集中處理。</div>
           </div>
           <div class="app-actions">
+            <a href="/live/" class="app-chip">即時收音／文字稿編輯 →</a>
             <div class="app-chip">Desktop 1280+</div>
             <div class="app-chip">Local only</div>
           </div>
@@ -1665,7 +1693,7 @@ with gr.Blocks(title="Whisper 語音轉文字") as demo:
                             )
                             preview_batch_button = gr.Button("更新佇列", scale=1)
                         batch_queue = gr.Dataframe(
-                            headers=["序號", "檔名", "狀態"],
+                            headers=["序號", "檔名", "狀態", "用時"],
                             label="處理佇列（修改序號即可調整順序）",
                             interactive=True,
                             elem_id="batch-queue",
@@ -1866,6 +1894,7 @@ with gr.Blocks(title="Whisper 語音轉文字") as demo:
                         "模型",
                         "裝置",
                         "句段",
+                        "用時",
                         "狀態",
                         "檔案數",
                     ],
@@ -2075,13 +2104,29 @@ with gr.Blocks(title="Whisper 語音轉文字") as demo:
     )
 
 
-if __name__ == "__main__":
-    port = _find_free_port(int(os.environ.get("WHISPER_PORT", "7860")))
-    demo.queue(default_concurrency_limit=1).launch(
-        server_name="127.0.0.1",
-        server_port=port,
-        inbrowser=True,
-        theme=THEME,
-        css=CUSTOM_CSS,
-        js=DESKTOP_WIDTH_JS,
+def create_desktop_app():
+    from whisper_app.live.server import create_live_app
+
+    def release_models():
+        _DIARIZATION_SERVICE.release_models()
+        _TRANSCRIPTION_SERVICE.release_models()
+
+    http_app = create_live_app(BASE_DIR, _JOB_MANAGER, release_models)
+    return gr.mount_gradio_app(
+        http_app, demo.queue(default_concurrency_limit=1), path="/",
+        theme=THEME, css=CUSTOM_CSS, js=DESKTOP_WIDTH_JS,
     )
+
+
+if __name__ == "__main__":
+    import threading
+    import webbrowser
+    import uvicorn
+
+    port = _find_free_port(int(os.environ.get("WHISPER_PORT", "7860")))
+    http_app = create_desktop_app()
+    if os.environ.get("WHISPER_NO_BROWSER") != "1":
+        @http_app.on_event("startup")
+        async def open_browser():
+            threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{port}/")).start()
+    uvicorn.run(http_app, host="127.0.0.1", port=port, access_log=False, ws_max_size=65536)
