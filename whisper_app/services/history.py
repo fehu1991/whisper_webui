@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable
 
+from whisper_app.services.timing import format_elapsed
+
 
 @dataclass(frozen=True)
 class HistoryRecord:
@@ -15,6 +17,7 @@ class HistoryRecord:
     model_size: str
     device: str
     segment_count: int
+    elapsed_seconds: float | None
     status: str
     files: tuple[str, ...]
     manifest_path: str = ""
@@ -26,6 +29,7 @@ class HistoryRecord:
             self.model_size or "—",
             self.device or "—",
             self.segment_count,
+            format_elapsed(self.elapsed_seconds),
             self.status,
             len(self.files),
         ]
@@ -49,13 +53,14 @@ def write_history_manifest(
     device: str,
     compute_type: str,
     segment_count: int,
+    elapsed_seconds: float,
     files: Iterable[str],
     status: str = "completed",
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = output_dir / f"{stem}.manifest.json"
     payload = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "task_id": stem,
         "created_at": datetime.now(UTC).isoformat(),
         "source_name": Path(source_path).name,
@@ -63,6 +68,7 @@ def write_history_manifest(
         "device": device,
         "compute_type": compute_type,
         "segment_count": segment_count,
+        "elapsed_seconds": max(0.0, float(elapsed_seconds)),
         "status": status,
         "files": [str(Path(path).resolve()) for path in files],
     }
@@ -106,6 +112,11 @@ def _manifest_records(output_dir: Path) -> list[HistoryRecord]:
                     device=str(payload.get("device") or ""),
                     segment_count=int(
                         payload.get("segment_count") or 0
+                    ),
+                    elapsed_seconds=(
+                        float(payload["elapsed_seconds"])
+                        if payload.get("elapsed_seconds") is not None
+                        else None
                     ),
                     status=str(
                         payload.get("status") or "completed"
@@ -156,6 +167,7 @@ def _legacy_records(
                 model_size="",
                 device="",
                 segment_count=0,
+                elapsed_seconds=None,
                 status="legacy",
                 files=tuple(
                     str(path.resolve())

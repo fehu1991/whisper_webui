@@ -136,6 +136,7 @@ class TranscriptionService:
                 device=runtime.device,
                 compute_type=runtime.compute_type,
                 download_root=str(self.model_dir),
+                local_files_only=True,
             )
         return self._model_cache[key]
 
@@ -153,7 +154,7 @@ class TranscriptionService:
         cancellation.raise_if_cancelled()
         yield TranscriptionEvent(
             "loading",
-            "正在載入模型（首次使用會下載，請稍候）...",
+            "正在載入本機模型（未下載的模型請先執行部署）...",
             runtime,
         )
 

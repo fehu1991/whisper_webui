@@ -221,6 +221,9 @@ class DiarizationService:
             source_note + device_note,
         )
 
+    def release_models(self) -> None:
+        self._pipeline_cache.clear()
+
     def run(
         self,
         audio_path: str,
