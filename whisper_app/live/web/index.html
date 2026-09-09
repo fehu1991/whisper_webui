@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="workspace-token" content="__WORKSPACE_TOKEN__">
+  <title>Whisper 即時工作台</title>
+  <link rel="stylesheet" href="/live/assets/live.css">
+  <script src="/live/assets/live.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">跳到主要內容</a>
+<header class="shell-header">
+  <a class="brand" href="#capture">Whisper <span>本機即時工作台</span></a>
+  <nav aria-label="工作區">
+    <a href="#capture" id="nav-capture" aria-current="page">即時收音</a>
+    <a href="#editor" id="nav-editor">文字稿編輯 <span id="new-count"></span></a>
+    <a href="/" id="files-link">音檔轉錄</a>
+  </nav>
+  <span class="local-label">本機處理 · 無雲端辨識</span>
+</header>
+<div class="session-bar">
+  <div><span id="phase" role="status">尚未收音</span><span class="clock" id="elapsed">00:00:00</span></div>
+  <div><span id="save-status" role="status">尚未建立文字稿</span><button id="stop" class="danger" disabled>停止收音</button></div>
+</div>
+<div id="error" role="alert" hidden></div>
+<main id="main" tabindex="-1">
+  <section id="page-capture" aria-labelledby="capture-title">
+    <div class="page-heading"><div><p class="eyebrow">LIVE TRANSCRIPTION</p><h1 id="capture-title">把現場的話，接進文字稿。</h1><p>開始收音後，可切到文字稿編輯頁校稿。切頁不中斷收音。</p></div></div>
+    <div class="capture-layout">
+      <section class="panel settings" aria-labelledby="settings-title">
+        <h2 id="settings-title">收音設定</h2>
+        <label for="microphone">麥克風</label><select id="microphone"><option value="">系統預設麥克風</option></select>
+        <label for="model">辨識模型</label><select id="model" disabled><option>正在檢查本機模型…</option></select>
+        <p class="hint">先用 small 測試即時速度；large-v3 較吃資源。裝置與精度由本機引擎自動選擇。</p>
+        <label for="language">辨識語言</label><select id="language"><option value="zh">中文（繁體）</option><option value="en">英文</option><option value="ja">日文</option><option value="auto">自動偵測</option></select>
+        <label class="check"><input id="record-audio" type="checkbox">另外保留原始錄音</label>
+        <p class="hint">預設只儲存文字稿。勾選後，錄音也會保存在本機，供事後校對。</p>
+        <button id="start" class="primary" disabled>開始收音</button>
+        <p id="readiness" class="hint" role="status">正在確認環境…</p>
+        <button id="recheck" class="quiet">重新檢查</button>
+      </section>
+      <section class="panel preview" aria-labelledby="preview-title">
+        <div class="panel-heading"><h2 id="preview-title">現場辨識預覽</h2><span id="row-count">0 段已送入編輯頁</span></div>
+        <label for="level">收音音量</label><meter id="level" min="0" max="1" value="0">0</meter>
+        <p id="preview" class="transcript-preview">尚未開始。請先選擇麥克風與模型，再按「開始收音」。</p>
+        <div class="preview-footer"><span id="lag">等待收音</span><a class="button" href="#editor">前往文字稿編輯 →</a></div>
+        <p class="hint">預覽中的句子仍可能改變；確認後才加入編輯頁。說話人目前顯示「待標註」，可在編輯頁修改。</p>
+      </section>
+    </div>
+    <section class="panel history" aria-labelledby="history-title">
+      <div><h2 id="history-title">接續編輯本機文字稿</h2><p class="hint">載入先前內容只供編輯，不會接續舊錄音。重新整理或關閉頁面會停止收音。</p></div>
+      <div class="history-controls"><label for="sessions">選擇工作紀錄</label><select id="sessions"><option value="">尚無紀錄</option></select><button id="load-session">載入文字稿</button><button id="refresh-sessions">重新整理</button></div>
+    </section>
+    <p class="storage-note">文字稿自動儲存於專案的 .whisper/live 資料夾；不使用瀏覽器雲端同步或 localStorage。請將整個專案放在非雲端同步的磁碟位置。首次部署需下載套件與模型，會議期間可斷網使用。</p>
+  </section>
+  <section id="page-editor" aria-labelledby="editor-title" hidden>
+    <div class="editor-heading"><div><h1 id="editor-title">文字稿編輯</h1><p>新段落只加在末尾；已修改、移動或刪除的內容不會被辨識結果覆蓋。</p></div><button id="save-now">儲存目前修改</button></div>
+    <iframe id="editor-frame" src="/live/editor" title="逐字稿修改工具"></iframe>
+  </section>
+</main>
+</body>
+</html>
