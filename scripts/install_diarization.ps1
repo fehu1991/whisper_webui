@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $ProjectRoot
 $VenvPath = Join-Path $ProjectRoot ".venv"
 $PythonExe = Join-Path $VenvPath "Scripts\python.exe"
 
@@ -10,10 +11,10 @@ if (-not (Test-Path $PythonExe)) {
 
 & $PythonExe -m pip install --upgrade pip
 & $PythonExe -m pip install `
-    -r (Join-Path $ProjectRoot "requirements.lock")
+    -r (Join-Path $ProjectRoot "requirements\requirements.lock")
 & $PythonExe -m pip install `
-    -r (Join-Path $ProjectRoot "requirements-diarization.lock") `
-    -c (Join-Path $ProjectRoot "constraints-verified.txt")
+    -r (Join-Path $ProjectRoot "requirements\requirements-diarization.lock") `
+    -c (Join-Path $ProjectRoot "requirements\constraints-verified.txt")
 
 Write-Host ""
 Write-Host "Diarization dependencies installed."

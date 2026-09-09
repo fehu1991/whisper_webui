@@ -6,7 +6,8 @@ $ErrorActionPreference = "Continue"
 $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
 
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $ProjectRoot
 $PythonExe = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 
 function Write-Section($Title) {

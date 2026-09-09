@@ -2,7 +2,8 @@
 $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
 
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $ProjectRoot
 $VenvPath = Join-Path $ProjectRoot ".venv"
 $PythonExe = Join-Path $VenvPath "Scripts\python.exe"
 

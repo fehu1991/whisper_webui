@@ -1,5 +1,8 @@
 # Whisper 工作台架構
 
+[回到專案首頁](../README.md) · [完整使用手冊](USER_GUIDE.md)
+
+
 ## 邊界
 
 - `whisper_app/live`：WhisperLiveKit 子程序、PCM 串流、本機工作儲存與頁面路由。`/live/#capture` 與 `/live/#editor` 是兩個互斥顯示的工作頁，共用收音狀態。
@@ -11,7 +14,9 @@
 - `whisper_app/services`：轉錄、說話人分離、說話者指派、輸出、歷史、品質設定與儲存管理。
 - `whisper_app/environment`：硬體／runtime 掃描、路徑啟用與建議規則。
 - `whisper_app/jobs`：單一共享推理資源、取消 token 與任務歷史。
-- `scripts`：無虛擬環境掃描、發行檢查、真實推論試跑與發行包建立。
+- `scripts`：CMD 呼叫的安裝、啟動、環境掃描、GPU 診斷與模型準備腳本。專案根目錄由腳本所在目錄的上一層決定。
+- `requirements`：基本、即時、說話人與 CUDA 套件清單，以及已驗證版本限制。
+- `docs`：完整使用手冊、即時保密操作、架構與版本紀錄。
 
 ## 主要資料流
 

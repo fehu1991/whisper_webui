@@ -1,10 +1,10 @@
-$ErrorActionPreference = "Stop"
-
 param(
     [string]$TargetDir = "models\pyannote-speaker-diarization-community-1"
 )
 
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ErrorActionPreference = "Stop"
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $ProjectRoot
 $PythonExe = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 $TargetPath = Join-Path $ProjectRoot $TargetDir
 

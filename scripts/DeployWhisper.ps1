@@ -9,13 +9,14 @@ try {
     $OutputEncoding = $Utf8NoBom
 } catch {}
 
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $ProjectRoot
 $VenvPath = Join-Path $ProjectRoot ".venv"
 $PythonExe = Join-Path $VenvPath "Scripts\python.exe"
 $ModelDir = Join-Path $ProjectRoot "models"
-$BaseLock = Join-Path $ProjectRoot "requirements.lock"
-$DiarizationLock = Join-Path $ProjectRoot "requirements-diarization.lock"
-$Constraints = Join-Path $ProjectRoot "constraints-verified.txt"
+$BaseLock = Join-Path $ProjectRoot "requirements\requirements.lock"
+$DiarizationLock = Join-Path $ProjectRoot "requirements\requirements-diarization.lock"
+$Constraints = Join-Path $ProjectRoot "requirements\constraints-verified.txt"
 $BootstrapScan = Join-Path $ProjectRoot "scripts\bootstrap_scan.ps1"
 $WhisperSizes = @("base", "small", "medium", "large-v3")
 $DiarizationModelDir = Join-Path $ModelDir "pyannote-speaker-diarization-community-1"

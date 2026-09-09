@@ -20,7 +20,8 @@ try {
     $OutputEncoding = $Utf8NoBom
 } catch {}
 
-$ProjectRoot  = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot  = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $ProjectRoot
 $VenvPath     = Join-Path $ProjectRoot ".venv"
 $Python       = Join-Path $VenvPath "Scripts\python.exe"
 $SitePackages = Join-Path $VenvPath "Lib\site-packages"
@@ -72,7 +73,7 @@ function Ensure-Venv {
 
 # 呼叫專案內既有的 PowerShell 腳本（可附加參數）
 function Invoke-Child($ScriptName, [string[]]$ExtraArgs) {
-    $path = Join-Path $ProjectRoot $ScriptName
+    $path = Join-Path $PSScriptRoot $ScriptName
     if (-not (Test-Path $path)) {
         Write-Host "找不到腳本：$ScriptName" -ForegroundColor Red
         return
@@ -97,7 +98,7 @@ function Install-BaseDeps {
     Write-Title "安裝已驗證的基本依賴 (requirements.lock)"
     if (-not (Ensure-Venv)) { return }
     & $Python -m pip install --upgrade pip
-    & $Python -m pip install -r (Join-Path $ProjectRoot "requirements.lock")
+    & $Python -m pip install -r (Join-Path $ProjectRoot "requirements\requirements.lock")
     if ($LASTEXITCODE -eq 0) {
         Write-Host "基本依賴安裝／更新完成。" -ForegroundColor Green
     } else {
@@ -129,12 +130,12 @@ function Update-AllDeps {
     & $Python -m pip install --upgrade pip
     # only-if-needed：torch 等相依套件除非版本限制要求，否則不動，避免拉到 PyPI 的 CPU 版
     & $Python -m pip install --upgrade-strategy only-if-needed `
-        -r (Join-Path $ProjectRoot "requirements.lock")
-    $diar = Join-Path $ProjectRoot "requirements-diarization.lock"
+        -r (Join-Path $ProjectRoot "requirements\requirements.lock")
+    $diar = Join-Path $ProjectRoot "requirements\requirements-diarization.lock"
     if (Test-Path $diar) {
         & $Python -m pip install --upgrade --upgrade-strategy only-if-needed `
             -r $diar `
-            -c (Join-Path $ProjectRoot "constraints-verified.txt")
+            -c (Join-Path $ProjectRoot "requirements\constraints-verified.txt")
     }
 
     Write-Host ""
@@ -207,7 +208,7 @@ function Repair-Environment {
         if (Ensure-Venv) {
             & $Python -m pip install --upgrade pip
             & $Python -m pip install `
-                -r (Join-Path $ProjectRoot "requirements.lock")
+                -r (Join-Path $ProjectRoot "requirements\requirements.lock")
             Write-Host "已重建虛擬環境並安裝基本依賴。GPU 版 PyTorch 請再執行選項 4。" -ForegroundColor Green
         }
     }
@@ -314,7 +315,7 @@ function Show-Menu {
     $choice = (Read-Host "請輸入選項").Trim()
 
     switch ($choice.ToLower()) {
-        "1"  { Invoke-Child "scripts\bootstrap_scan.ps1"; Pause-Return }
+        "1"  { Invoke-Child "bootstrap_scan.ps1"; Pause-Return }
         "2"  {
             if (Confirm-YesNo "要一併執行 faster-whisper CUDA 試跑 (smoke test) 嗎？") {
                 Invoke-Child "gpu_diagnostics.ps1" @("-SmokeTest")
@@ -332,7 +333,7 @@ function Show-Menu {
         "9"  { Manage-WhisperModels; Pause-Return }
         "10" { Invoke-Child "prepare_pyannote_model.ps1"; Pause-Return }
         "11" { Invoke-Child "verify_diarization.ps1"; Pause-Return }
-        "12" { & $PwSh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "start.ps1"); Pause-Return }
+        "12" { & $PwSh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "scripts\start.ps1"); Pause-Return }
         "q"  { Write-Host "再見。"; break mainloop }
         default { Write-Host "無效選項，請重新輸入。" -ForegroundColor Yellow; Start-Sleep -Milliseconds 800 }
     }

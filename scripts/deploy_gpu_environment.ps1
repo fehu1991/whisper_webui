@@ -2,7 +2,8 @@ $ErrorActionPreference = "Stop"
 $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
 
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $ProjectRoot
 $VenvPath = Join-Path $ProjectRoot ".venv"
 $PythonExe = Join-Path $VenvPath "Scripts\python.exe"
 $DeployExitCode = 0
@@ -90,30 +91,30 @@ if (-not (Test-Path $PythonExe)) {
 
 Write-Host "Python: $PythonExe"
 & $PythonExe -m pip install --upgrade pip
-& $PythonExe -m pip install -r (Join-Path $ProjectRoot "requirements.lock")
+& $PythonExe -m pip install -r (Join-Path $ProjectRoot "requirements\requirements.lock")
 
 Write-Section "PyTorch CUDA"
-& "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "install_torch_cuda.ps1")
+& "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "scripts\install_torch_cuda.ps1")
 if ($LASTEXITCODE -ne 0) {
     Write-Host "PyTorch CUDA installation did not complete."
     $DeployExitCode = $LASTEXITCODE
 }
 
 Write-Section "Speaker diarization"
-if (Test-Path (Join-Path $ProjectRoot "requirements-diarization.lock")) {
+if (Test-Path (Join-Path $ProjectRoot "requirements\requirements-diarization.lock")) {
     & $PythonExe -m pip install `
-        -r (Join-Path $ProjectRoot "requirements-diarization.lock") `
-        -c (Join-Path $ProjectRoot "constraints-verified.txt")
+        -r (Join-Path $ProjectRoot "requirements\requirements-diarization.lock") `
+        -c (Join-Path $ProjectRoot "requirements\constraints-verified.txt")
 }
 
 Write-Section "CTranslate2 / faster-whisper"
 Write-Host "Re-applying the verified base dependency lock..."
-& $PythonExe -m pip install -r (Join-Path $ProjectRoot "requirements.lock")
+& $PythonExe -m pip install -r (Join-Path $ProjectRoot "requirements\requirements.lock")
 
 Try-InstallCudaToolkit
 
 Write-Section "Verification"
-& "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "gpu_diagnostics.ps1") -SmokeTest
+& "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "scripts\gpu_diagnostics.ps1") -SmokeTest
 $VerifyExitCode = $LASTEXITCODE
 
 Write-Section "PyTorch CUDA verification"

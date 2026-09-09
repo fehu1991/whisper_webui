@@ -2,9 +2,10 @@ $ErrorActionPreference = "Stop"
 $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
 
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $ProjectRoot
 $PythonExe = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
-$TorchLock = Join-Path $ProjectRoot "requirements-torch-cu128.txt"
+$TorchLock = Join-Path $ProjectRoot "requirements\requirements-torch-cu128.txt"
 $WheelhouseRoot = Join-Path $ProjectRoot ".cache\wheels"
 $Wheelhouse = Join-Path $WheelhouseRoot ("pytorch-cu128-" + (Get-Date -Format "yyyyMMddHHmmss"))
 

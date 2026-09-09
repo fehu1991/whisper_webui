@@ -1,7 +1,8 @@
 ﻿$ErrorActionPreference = "Stop"
 $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $ProjectRoot
 $PythonExe = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 try {
     if (-not (Test-Path -LiteralPath $PythonExe)) {
@@ -9,7 +10,7 @@ try {
     }
     Write-Host "即時功能部署會連網下載套件與 small 模型，不會讀取或上傳錄音及逐字稿。"
     Write-Host "請在會議前完成；使用時不需要再次執行本檔。"
-    & $PythonExe -m pip install --disable-pip-version-check -r (Join-Path $ProjectRoot "requirements-live.txt") -c (Join-Path $ProjectRoot "constraints-verified.txt")
+    & $PythonExe -m pip install --disable-pip-version-check -r (Join-Path $ProjectRoot "requirements\requirements-live.txt") -c (Join-Path $ProjectRoot "requirements\constraints-verified.txt")
     if ($LASTEXITCODE -ne 0) { throw "即時套件安裝失敗。" }
     $env:HF_HUB_OFFLINE = "0"
     & $PythonExe (Join-Path $ProjectRoot "scripts\prepare_live_model.py")
